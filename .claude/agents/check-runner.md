@@ -12,9 +12,9 @@ changed Python files with `git diff --name-only master -- '*.py'`.
 Run these steps in order. Keep going after a failure so the report is complete.
 
 1. **pre-commit**: `pre-commit run --files <changed files>`. On Windows,
-   first apply the `python3` shim from CLAUDE.md ("Environment notes"), or
-   `validate-filenames` fails for reasons unrelated to the change. If a hook
-   modifies files, that is a FAIL. Report which hook and what it changed
+   first apply the `python3` shim and `UV_PYTHON=3.15` from CLAUDE.md
+   ("Environment notes"), or `validate-filenames` and `uv-lock` fail for
+   reasons unrelated to the change. If a hook modifies files, that is a FAIL. Report which hook and what it changed
    (`git diff --stat`), and don't revert it.
 2. **doctests**: `uv run --python 3.15 --group test pytest --doctest-modules <changed .py files>`.
 3. **target rule, repo-wide**:
@@ -37,10 +37,26 @@ Run these steps in order. Keep going after a failure so the report is complete.
    ```
 
    Keep only the diagnostic lines for that file (ignore `renamed-rule`
-   warnings about pyproject.toml). Count diagnostics per rule for each version.
-   FAIL if any rule has more diagnostics on the branch than on master, even
-   when the target rule went to zero. Line numbers may shift, so compare counts
-   per rule, not line numbers. Report both totals (e.g. "master 3, branch 0").
+   warnings about pyproject.toml). Then list the branch lines the diff
+   added or changed:
+
+   ```bash
+   git diff -U0 master -- "$F" | sed -nE 's/^@@ [^+]*\+([0-9]+)(,([0-9]+))? @@.*/\1 \3/p'
+   ```
+
+   Each output line is `start count` (an empty count means 1, and 0 means a
+   pure deletion). FAIL if either is true:
+
+   - **(a)** any rule has more diagnostics on the branch than on master
+     (compare counts per rule, since line numbers shift), or
+   - **(b)** any branch diagnostic, under any rule, sits on a line the diff
+     added or changed. Code this change wrote must be clean under every rule.
+     Otherwise a fix can swap an old error for a new one on the same line
+     (for example `int` is not subscriptable becomes `None` is not
+     subscriptable) and still keep the count flat.
+
+   Report both totals (e.g. "master 3, branch 0") and, for (b), each offending
+   diagnostic line.
 5. **diff size and line endings**: `git diff --stat master` and
    `git ls-files --eol <changed files>`. FAIL if any file shows far more
    changed lines than expected (more than ~20 for a small fix), or if a file's

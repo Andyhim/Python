@@ -53,6 +53,11 @@ pytest is in the `test` dependency group, so pytest commands need `--group test`
   `python3.cmd` containing `@py -3 %*`, then prefix that directory to PATH for
   pre-commit and for `git commit` (whose git hook runs pre-commit):
   `PATH="<shim dir>:$PATH" pre-commit run --files ...`. Never skip the hook.
+- uv 0.13 can't use its free-threaded 3.15 install on this machine ("Missing
+  expected target directory for Python minor version link"), so the `uv-lock`
+  hook fails on the `3.15t` from `.python-version`. Set `UV_PYTHON=3.15` for
+  pre-commit and `git commit`. The lockfile is universal, so the hook still
+  checks it properly.
 - `gh` lives at `C:\Program Files\GitHub CLI\gh.exe`; open a new shell if it isn't
   on PATH yet.
 - ty 0.0.102 warns that four `[tool.ty]` rule names in pyproject.toml were renamed
