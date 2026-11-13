@@ -1,0 +1,2 @@
+# bash can't run a script with CRLF endings, and a broken guard blocks every command.
+*.sh text eol=lf
